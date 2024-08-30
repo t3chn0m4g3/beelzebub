@@ -55,6 +55,27 @@ type Plugin struct {
 	OllamaModel     string `yaml:"ollamaModel"`
 }
 
+// UnmarshalYAML customizes the unmarshalling of the Plugin struct
+func (p *Plugin) UnmarshalYAML(unmarshal func(interface{}) error) error {
+	type rawPlugin Plugin
+	raw := rawPlugin{}
+	if err := unmarshal(&raw); err != nil {
+		return err
+	}
+	raw.OpenAISecretKey = expandEnv(raw.OpenAISecretKey)
+	raw.LLMModel = expandEnv(raw.LLMModel)
+	raw.Host = expandEnv(raw.Host)
+	raw.OllamaModel = expandEnv(raw.OllamaModel)
+	fmt.Println("OllamaModel: ", raw.OllamaModel)
+	*p = Plugin(raw)
+	return nil
+}
+
+// expandEnv replaces any ${VAR} or $VAR in the input string according to the values of the current environment variables.
+func expandEnv(s string) string {
+	return os.ExpandEnv(s)
+}
+
 // BeelzebubServiceConfiguration is the struct that contains the configurations of the honeypot service
 type BeelzebubServiceConfiguration struct {
 	ApiVersion             string    `yaml:"apiVersion"`

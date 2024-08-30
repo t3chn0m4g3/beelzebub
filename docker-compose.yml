@@ -16,5 +16,10 @@ services:
       - "2112:2112" # Prometheus openmetrics
     environment:
       RABBITMQ_URI: ${RABBITMQ_URI}
+      LLMMODEL: "ollama"
+      LLMHOST: "http://localhost:11434/api/chat"
+      OLLAMAMODEL: "llama3"
+      #LLMMODEL: "gpt4-o"
+      #OPENAISECRETKEY: "sk-proj-123456"
     volumes:
       - "./configurations:/configurations"
