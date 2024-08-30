@@ -8,9 +8,10 @@ import (
 	"io"
 	"net"
 	"net/http"
+	"os"
 	"regexp"
 	"strings"
-
+    "time"
 	"github.com/google/uuid"
 	log "github.com/sirupsen/logrus"
 )
@@ -20,6 +21,20 @@ type HTTPStrategy struct {
 }
 
 func (httpStrategy HTTPStrategy) Init(beelzebubServiceConfiguration parser.BeelzebubServiceConfiguration, tr tracer.Tracer) error {
+	file, err := os.OpenFile("/configurations/logs/beelzebub.json", os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0666)
+	if err != nil {
+		log.Fatalf("Failed to open log file: %v", err)
+	}
+	multiWriter := io.MultiWriter(os.Stdout, file)
+	log.SetOutput(multiWriter)
+	log.SetFormatter(&log.JSONFormatter{
+		TimestampFormat: time.RFC3339,
+		FieldMap: log.FieldMap{
+			log.FieldKeyTime: "timestamp",
+		},
+	})
+	log.SetLevel(log.InfoLevel)
+
 	httpStrategy.beelzebubServiceConfiguration = beelzebubServiceConfiguration
 	serverMux := http.NewServeMux()
 
@@ -45,11 +60,12 @@ func (httpStrategy HTTPStrategy) Init(beelzebubServiceConfiguration parser.Beelz
 					}
 
 					llmHoneypot := plugins.LLMHoneypot{
-						Histories: make([]plugins.Message, 0),
-						OpenAIKey: beelzebubServiceConfiguration.Plugin.OpenAISecretKey,
-						Protocol:  tracer.HTTP,
-						Host:      beelzebubServiceConfiguration.Plugin.Host,
-						Model:     llmModel,
+						Histories:		make([]plugins.Message, 0),
+						OpenAIKey:		beelzebubServiceConfiguration.Plugin.OpenAISecretKey,
+						Protocol:		tracer.HTTP,
+						Host:			beelzebubServiceConfiguration.Plugin.Host,
+						Model:			llmModel,
+						OllamaModel:	beelzebubServiceConfiguration.Plugin.OllamaModel,
 					}
 
 					llmHoneypotInstance := plugins.InitLLMHoneypot(llmHoneypot)
@@ -87,30 +103,45 @@ func (httpStrategy HTTPStrategy) Init(beelzebubServiceConfiguration parser.Beelz
 }
 
 func traceRequest(request *http.Request, tr tracer.Tracer, HoneypotDescription string) {
+	file, err := os.OpenFile("/configurations/logs/beelzebub.json", os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0666)
+	if err != nil {
+		log.Fatalf("Failed to open log file: %v", err)
+	}
+	multiWriter := io.MultiWriter(os.Stdout, file)
+	log.SetOutput(multiWriter)
+	log.SetFormatter(&log.JSONFormatter{
+		TimestampFormat: time.RFC3339,
+		FieldMap: log.FieldMap{
+			log.FieldKeyTime: "timestamp",
+		},
+	})
+	log.SetLevel(log.InfoLevel)
+
 	bodyBytes, err := io.ReadAll(request.Body)
 	body := ""
 	if err == nil {
 		body = string(bodyBytes)
-	}
-	host, port, _ := net.SplitHostPort(request.RemoteAddr)
+		request.Body = io.NopCloser(strings.NewReader(body))
 
-	tr.TraceEvent(tracer.Event{
-		Msg:             "HTTP New request",
-		RequestURI:      request.RequestURI,
-		Protocol:        tracer.HTTP.String(),
-		HTTPMethod:      request.Method,
-		Body:            body,
-		HostHTTPRequest: request.Host,
-		UserAgent:       request.UserAgent(),
-		Cookies:         mapCookiesToString(request.Cookies()),
-		Headers:         mapHeaderToString(request.Header),
-		Status:          tracer.Stateless.String(),
-		RemoteAddr:      request.RemoteAddr,
-		SourceIp:        host,
-		SourcePort:      port,
-		ID:              uuid.New().String(),
-		Description:     HoneypotDescription,
-	})
+	}
+	src_ip, src_port, _ := net.SplitHostPort(request.RemoteAddr)
+
+	log.WithFields(log.Fields{
+		"info":				"HTTP New request",
+		"request_uri":		request.RequestURI,
+		"protocol":			tracer.HTTP.String(),
+		"request_method":	request.Method,
+		"body":				body,
+		"hostname":			request.Host,
+		"userAgent":		request.UserAgent(),
+		"request_cookies":	mapCookiesToString(request.Cookies()),
+		"request_headers":	mapHeaderToString(request.Header),
+		"status":			tracer.Stateless.String(),
+		"src_ip":			src_ip,
+		"src_port":			src_port,
+		"id":				uuid.New().String(),
+		"service":			HoneypotDescription,
+	}).Info("HTTP New request")
 }
 
 func mapHeaderToString(headers http.Header) string {

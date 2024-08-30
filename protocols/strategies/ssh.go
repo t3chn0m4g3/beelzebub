@@ -5,11 +5,12 @@ import (
 	"github.com/mariocandela/beelzebub/v3/parser"
 	"github.com/mariocandela/beelzebub/v3/plugins"
 	"github.com/mariocandela/beelzebub/v3/tracer"
+	"io"
 	"net"
 	"regexp"
 	"strings"
 	"time"
-
+    "os"
 	"github.com/gliderlabs/ssh"
 	"github.com/google/uuid"
 	log "github.com/sirupsen/logrus"
@@ -20,6 +21,20 @@ type SSHStrategy struct {
 }
 
 func (sshStrategy *SSHStrategy) Init(beelzebubServiceConfiguration parser.BeelzebubServiceConfiguration, tr tracer.Tracer) error {
+	file, err := os.OpenFile("/configurations/logs/beelzebub.json", os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0666)
+	if err != nil {
+		log.Fatalf("Failed to open log file: %v", err)
+	}
+	multiWriter := io.MultiWriter(os.Stdout, file)
+	log.SetOutput(multiWriter)
+	log.SetFormatter(&log.JSONFormatter{
+		TimestampFormat: time.RFC3339,
+		FieldMap: log.FieldMap{
+			log.FieldKeyTime: "timestamp",
+		},
+	})
+	log.SetLevel(log.InfoLevel)
+
 	go func() {
 		server := &ssh.Server{
 			Addr:        beelzebubServiceConfiguration.Address,
@@ -29,21 +44,20 @@ func (sshStrategy *SSHStrategy) Init(beelzebubServiceConfiguration parser.Beelze
 			Handler: func(sess ssh.Session) {
 				uuidSession := uuid.New()
 
-				host, port, _ := net.SplitHostPort(sess.RemoteAddr().String())
+				src_ip, src_port, _ := net.SplitHostPort(sess.RemoteAddr().String())
 
-				tr.TraceEvent(tracer.Event{
-					Msg:         "New SSH Session",
-					Protocol:    tracer.SSH.String(),
-					RemoteAddr:  sess.RemoteAddr().String(),
-					SourceIp:    host,
-					SourcePort:  port,
-					Status:      tracer.Start.String(),
-					ID:          uuidSession.String(),
-					Environ:     strings.Join(sess.Environ(), ","),
-					User:        sess.User(),
-					Description: beelzebubServiceConfiguration.Description,
-					Command:     sess.RawCommand(),
-				})
+				log.WithFields(log.Fields{
+					"info":			"New SSH Session",
+					"protocol":		tracer.SSH.String(),
+					"src_ip":		src_ip,
+					"src_port":		src_port,
+					"status":		tracer.Start.String(),
+					"id":			uuidSession.String(),
+					"environ":		strings.Join(sess.Environ(), ","),
+					"username":		sess.User(),
+					"service":		beelzebubServiceConfiguration.Description,
+					"command":		sess.RawCommand(),
+				}).Info("New SSH Session")
 
 				term := terminal.NewTerminal(sess, buildPrompt(sess.User(), beelzebubServiceConfiguration.ServerName))
 				var histories []plugins.Message
@@ -76,11 +90,12 @@ func (sshStrategy *SSHStrategy) Init(beelzebubServiceConfiguration parser.Beelze
 								}
 
 								llmHoneypot := plugins.LLMHoneypot{
-									Histories: histories,
-									OpenAIKey: beelzebubServiceConfiguration.Plugin.OpenAISecretKey,
-									Protocol:  tracer.SSH,
-									Host:      beelzebubServiceConfiguration.Plugin.Host,
-									Model:     llmModel,
+									Histories: 		histories,
+									OpenAIKey: 		beelzebubServiceConfiguration.Plugin.OpenAISecretKey,
+									Protocol:  		tracer.SSH,
+									Host:      		beelzebubServiceConfiguration.Plugin.Host,
+									Model:     		llmModel,
+									OllamaModel:	beelzebubServiceConfiguration.Plugin.OllamaModel,
 								}
 
 								llmHoneypotInstance := plugins.InitLLMHoneypot(llmHoneypot)
@@ -96,44 +111,42 @@ func (sshStrategy *SSHStrategy) Init(beelzebubServiceConfiguration parser.Beelze
 
 							term.Write(append([]byte(commandOutput), '\n'))
 
-							tr.TraceEvent(tracer.Event{
-								Msg:           "New SSH Terminal Session",
-								RemoteAddr:    sess.RemoteAddr().String(),
-								SourceIp:      host,
-								SourcePort:    port,
-								Status:        tracer.Interaction.String(),
-								Command:       commandInput,
-								CommandOutput: commandOutput,
-								ID:            uuidSession.String(),
-								Protocol:      tracer.SSH.String(),
-								Description:   beelzebubServiceConfiguration.Description,
-							})
+							log.WithFields(log.Fields{
+								"info":				"New SSH Terminal Session",
+								"src_ip":			src_ip,
+								"src_port":			src_port,
+								"status":			tracer.Interaction.String(),
+								"command":			commandInput,
+								"commandoutput": 	commandOutput,
+								"id":				uuidSession.String(),
+								"protocol":			tracer.SSH.String(),
+								"service":			beelzebubServiceConfiguration.Description,
+							}).Info("New SSH Terminal Session")
 							break
 						}
 					}
 				}
-				tr.TraceEvent(tracer.Event{
-					Msg:    "End SSH Session",
-					Status: tracer.End.String(),
-					ID:     uuidSession.String(),
-				})
+				log.WithFields(log.Fields{
+					"info":		"End SSH Session",
+					"status":	tracer.End.String(),
+					"id":		uuidSession.String(),
+				}).Info("End SSH Session")
 			},
 			PasswordHandler: func(ctx ssh.Context, password string) bool {
-				host, port, _ := net.SplitHostPort(ctx.RemoteAddr().String())
+				src_ip, src_port, _ := net.SplitHostPort(ctx.RemoteAddr().String())
 
-				tr.TraceEvent(tracer.Event{
-					Msg:         "New SSH attempt",
-					Protocol:    tracer.SSH.String(),
-					Status:      tracer.Stateless.String(),
-					User:        ctx.User(),
-					Password:    password,
-					Client:      ctx.ClientVersion(),
-					RemoteAddr:  ctx.RemoteAddr().String(),
-					SourceIp:    host,
-					SourcePort:  port,
-					ID:          uuid.New().String(),
-					Description: beelzebubServiceConfiguration.Description,
-				})
+				log.WithFields(log.Fields{
+					"info":         "New SSH attempt",
+					"protocol":		tracer.SSH.String(),
+					"status":		tracer.Stateless.String(),
+					"username":		ctx.User(),
+					"password":		password,
+					"client":		ctx.ClientVersion(),
+					"src_ip":		src_ip,
+					"src_port":		src_port,
+					"id":			uuid.New().String(),
+					"service":		beelzebubServiceConfiguration.Description,
+				}).Info("New SSH attempt")
 				matched, err := regexp.MatchString(beelzebubServiceConfiguration.PasswordRegex, password)
 				if err != nil {
 					log.Errorf("Error regex: %s, %s", beelzebubServiceConfiguration.PasswordRegex, err.Error())

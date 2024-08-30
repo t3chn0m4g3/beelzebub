@@ -2,7 +2,7 @@ core:
   logging:
     debug: false
     debugReportCaller: false
-    logDisableTimestamp: true
+    logDisableTimestamp: false
     logsPath: ./logs
   tracings:
     rabbit-mq:

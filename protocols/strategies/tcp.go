@@ -4,7 +4,9 @@ import (
 	"fmt"
 	"github.com/mariocandela/beelzebub/v3/parser"
 	"github.com/mariocandela/beelzebub/v3/tracer"
+	"io"
 	"net"
+	"os"
 	"time"
 
 	"github.com/google/uuid"
@@ -15,6 +17,20 @@ type TCPStrategy struct {
 }
 
 func (tcpStrategy *TCPStrategy) Init(beelzebubServiceConfiguration parser.BeelzebubServiceConfiguration, tr tracer.Tracer) error {
+	file, err := os.OpenFile("/configurations/logs/beelzebub.json", os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0666)
+	if err != nil {
+		log.Fatalf("Failed to open log file: %v", err)
+	}
+	multiWriter := io.MultiWriter(os.Stdout, file)
+	log.SetOutput(multiWriter)
+	log.SetFormatter(&log.JSONFormatter{
+		TimestampFormat: time.RFC3339,
+		FieldMap: log.FieldMap{
+			log.FieldKeyTime: "timestamp",
+		},
+	})
+	log.SetLevel(log.InfoLevel)
+
 	listen, err := net.Listen("tcp", beelzebubServiceConfiguration.Address)
 	if err != nil {
 		log.Errorf("Error during init TCP Protocol: %s", err.Error())
@@ -35,19 +51,18 @@ func (tcpStrategy *TCPStrategy) Init(beelzebubServiceConfiguration parser.Beelze
 						command = string(buffer[:n])
 					}
 
-					host, port, _ := net.SplitHostPort(conn.RemoteAddr().String())
+					src_ip, src_port, _ := net.SplitHostPort(conn.RemoteAddr().String())
 
-					tr.TraceEvent(tracer.Event{
-						Msg:         "New TCP attempt",
-						Protocol:    tracer.TCP.String(),
-						Command:     command,
-						Status:      tracer.Stateless.String(),
-						RemoteAddr:  conn.RemoteAddr().String(),
-						SourceIp:    host,
-						SourcePort:  port,
-						ID:          uuid.New().String(),
-						Description: beelzebubServiceConfiguration.Description,
-					})
+					log.WithFields(log.Fields{
+						"info":			"New TCP attempt",
+						"protocol":		tracer.TCP.String(),
+						"command":		command,
+						"status":		tracer.Stateless.String(),
+						"src_ip":		src_ip,
+						"src_port":		src_port,
+						"id":			uuid.New().String(),
+						"service":		beelzebubServiceConfiguration.Description,
+					}).Info("New TCP attempt")
 					conn.Close()
 				}()
 			}
