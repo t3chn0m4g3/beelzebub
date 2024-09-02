@@ -127,7 +127,7 @@ func traceRequest(request *http.Request, tr tracer.Tracer, HoneypotDescription s
 	src_ip, src_port, _ := net.SplitHostPort(request.RemoteAddr)
 
 	log.WithFields(log.Fields{
-		"info":				"HTTP New request",
+		"message":			"HTTP New request",
 		"request_uri":		request.RequestURI,
 		"protocol":			tracer.HTTP.String(),
 		"request_method":	request.Method,
@@ -139,7 +139,7 @@ func traceRequest(request *http.Request, tr tracer.Tracer, HoneypotDescription s
 		"status":			tracer.Stateless.String(),
 		"src_ip":			src_ip,
 		"src_port":			src_port,
-		"id":				uuid.New().String(),
+		"session":			uuid.New().String(),
 		"service":			HoneypotDescription,
 	}).Info("HTTP New request")
 }

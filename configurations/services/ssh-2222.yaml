@@ -1,7 +1,7 @@
 apiVersion: "v1"
 protocol: "ssh"
 address: ":2222"
-description: "SSH interactive ChatGPT"
+description: "SSH interactive LLM"
 commands:
   - regex: "^(.+)$"
     plugin: "LLMHoneypot"

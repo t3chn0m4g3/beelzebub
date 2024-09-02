@@ -1,7 +1,7 @@
 apiVersion: "v1"
 protocol: "http"
 address: ":80"
-description: "Wordpress 6.0"
+description: "Wordpress 6.0 LLM"
 commands:
   - regex: "^(/index.php|/index.html|/)$"
     handler:
