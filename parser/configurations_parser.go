@@ -66,7 +66,7 @@ func (p *Plugin) UnmarshalYAML(unmarshal func(interface{}) error) error {
 	raw.LLMModel = expandEnv(raw.LLMModel)
 	raw.Host = expandEnv(raw.Host)
 	raw.OllamaModel = expandEnv(raw.OllamaModel)
-	fmt.Println("OllamaModel: ", raw.OllamaModel)
+	// fmt.Println("OllamaModel: ", raw.OllamaModel)
 	*p = Plugin(raw)
 	return nil
 }
