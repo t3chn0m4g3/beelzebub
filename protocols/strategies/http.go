@@ -2,17 +2,18 @@ package strategies
 
 import (
 	"fmt"
-	"github.com/mariocandela/beelzebub/v3/parser"
-	"github.com/mariocandela/beelzebub/v3/plugins"
-	"github.com/mariocandela/beelzebub/v3/tracer"
 	"io"
 	"net"
 	"net/http"
 	"os"
 	"regexp"
 	"strings"
-    "time"
+	"time"
+
 	"github.com/google/uuid"
+	"github.com/mariocandela/beelzebub/v3/parser"
+	"github.com/mariocandela/beelzebub/v3/plugins"
+	"github.com/mariocandela/beelzebub/v3/tracer"
 	log "github.com/sirupsen/logrus"
 )
 
@@ -21,7 +22,7 @@ type HTTPStrategy struct {
 }
 
 func (httpStrategy HTTPStrategy) Init(beelzebubServiceConfiguration parser.BeelzebubServiceConfiguration, tr tracer.Tracer) error {
-	file, err := os.OpenFile("/configurations/logs/beelzebub.json", os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0666)
+	file, err := os.OpenFile("/configurations/log/beelzebub.json", os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0770)
 	if err != nil {
 		log.Fatalf("Failed to open log file: %v", err)
 	}
@@ -60,12 +61,12 @@ func (httpStrategy HTTPStrategy) Init(beelzebubServiceConfiguration parser.Beelz
 					}
 
 					llmHoneypot := plugins.LLMHoneypot{
-						Histories:		make([]plugins.Message, 0),
-						OpenAIKey:		beelzebubServiceConfiguration.Plugin.OpenAISecretKey,
-						Protocol:		tracer.HTTP,
-						Host:			beelzebubServiceConfiguration.Plugin.Host,
-						Model:			llmModel,
-						OllamaModel:	beelzebubServiceConfiguration.Plugin.OllamaModel,
+						Histories:   make([]plugins.Message, 0),
+						OpenAIKey:   beelzebubServiceConfiguration.Plugin.OpenAISecretKey,
+						Protocol:    tracer.HTTP,
+						Host:        beelzebubServiceConfiguration.Plugin.Host,
+						Model:       llmModel,
+						OllamaModel: beelzebubServiceConfiguration.Plugin.OllamaModel,
 					}
 
 					llmHoneypotInstance := plugins.InitLLMHoneypot(llmHoneypot)
@@ -127,20 +128,20 @@ func traceRequest(request *http.Request, tr tracer.Tracer, HoneypotDescription s
 	src_ip, src_port, _ := net.SplitHostPort(request.RemoteAddr)
 
 	log.WithFields(log.Fields{
-		"message":			"HTTP New request",
-		"request_uri":		request.RequestURI,
-		"protocol":			tracer.HTTP.String(),
-		"request_method":	request.Method,
-		"body":				body,
-		"hostname":			request.Host,
-		"userAgent":		request.UserAgent(),
-		"request_cookies":	mapCookiesToString(request.Cookies()),
-		"request_headers":	mapHeaderToString(request.Header),
-		"status":			tracer.Stateless.String(),
-		"src_ip":			src_ip,
-		"src_port":			src_port,
-		"session":			uuid.New().String(),
-		"service":			HoneypotDescription,
+		"message":         "HTTP New request",
+		"request_uri":     request.RequestURI,
+		"protocol":        tracer.HTTP.String(),
+		"request_method":  request.Method,
+		"body":            body,
+		"hostname":        request.Host,
+		"userAgent":       request.UserAgent(),
+		"request_cookies": mapCookiesToString(request.Cookies()),
+		"request_headers": mapHeaderToString(request.Header),
+		"status":          tracer.Stateless.String(),
+		"src_ip":          src_ip,
+		"src_port":        src_port,
+		"session":         uuid.New().String(),
+		"service":         HoneypotDescription,
 	}).Info("HTTP New request")
 }
 

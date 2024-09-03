@@ -27,7 +27,7 @@ type SSHStrategy struct {
 }
 
 func (sshStrategy *SSHStrategy) Init(beelzebubServiceConfiguration parser.BeelzebubServiceConfiguration, tr tracer.Tracer) error {
-	file, err := os.OpenFile("/configurations/logs/beelzebub.json", os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0770)
+	file, err := os.OpenFile("/configurations/log/beelzebub.json", os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0770)
 	if err != nil {
 		log.Fatalf("Failed to open log file: %v", err)
 	}

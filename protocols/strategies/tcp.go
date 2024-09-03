@@ -2,12 +2,13 @@ package strategies
 
 import (
 	"fmt"
-	"github.com/mariocandela/beelzebub/v3/parser"
-	"github.com/mariocandela/beelzebub/v3/tracer"
 	"io"
 	"net"
 	"os"
 	"time"
+
+	"github.com/mariocandela/beelzebub/v3/parser"
+	"github.com/mariocandela/beelzebub/v3/tracer"
 
 	"github.com/google/uuid"
 	log "github.com/sirupsen/logrus"
@@ -17,7 +18,7 @@ type TCPStrategy struct {
 }
 
 func (tcpStrategy *TCPStrategy) Init(beelzebubServiceConfiguration parser.BeelzebubServiceConfiguration, tr tracer.Tracer) error {
-	file, err := os.OpenFile("/configurations/logs/beelzebub.json", os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0666)
+	file, err := os.OpenFile("/configurations/log/beelzebub.json", os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0770)
 	if err != nil {
 		log.Fatalf("Failed to open log file: %v", err)
 	}
@@ -54,14 +55,14 @@ func (tcpStrategy *TCPStrategy) Init(beelzebubServiceConfiguration parser.Beelze
 					src_ip, src_port, _ := net.SplitHostPort(conn.RemoteAddr().String())
 
 					log.WithFields(log.Fields{
-						"message":		"New TCP attempt",
-						"protocol":		tracer.TCP.String(),
-						"command":		command,
-						"status":		tracer.Stateless.String(),
-						"src_ip":		src_ip,
-						"src_port":		src_port,
-						"session":		uuid.New().String(),
-						"service":		beelzebubServiceConfiguration.Description,
+						"message":  "New TCP attempt",
+						"protocol": tracer.TCP.String(),
+						"command":  command,
+						"status":   tracer.Stateless.String(),
+						"src_ip":   src_ip,
+						"src_port": src_port,
+						"session":  uuid.New().String(),
+						"service":  beelzebubServiceConfiguration.Description,
 					}).Info("New TCP attempt")
 					conn.Close()
 				}()
