@@ -27,7 +27,7 @@ type SSHStrategy struct {
 }
 
 func (sshStrategy *SSHStrategy) Init(beelzebubServiceConfiguration parser.BeelzebubServiceConfiguration, tr tracer.Tracer) error {
-	file, err := os.OpenFile("/configurations/log/beelzebub.json", os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0770)
+	file, err := os.OpenFile("./configurations/log/beelzebub.json", os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0770)
 	if err != nil {
 		log.Fatalf("Failed to open log file: %v", err)
 	}
@@ -43,7 +43,7 @@ func (sshStrategy *SSHStrategy) Init(beelzebubServiceConfiguration parser.Beelze
 
 	go func() {
 		// Load or generate SSH host key
-		hostKey, err := loadOrGenerateHostKey("/configurations/key/ssh_host_key")
+		hostKey, err := loadOrGenerateHostKey("./configurations/key/ssh_host_key")
 		if err != nil {
 			log.Fatalf("Failed to load or generate host key: %v", err)
 		}
