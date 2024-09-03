@@ -1,6 +1,10 @@
 package strategies
 
 import (
+	"crypto/rand"
+	"crypto/rsa"
+	"crypto/x509"
+	"encoding/pem"
 	"fmt"
 	"io"
 	"net"
@@ -15,6 +19,7 @@ import (
 	"github.com/mariocandela/beelzebub/v3/plugins"
 	"github.com/mariocandela/beelzebub/v3/tracer"
 	log "github.com/sirupsen/logrus"
+	gossh "golang.org/x/crypto/ssh"
 	"golang.org/x/term"
 )
 
@@ -22,7 +27,7 @@ type SSHStrategy struct {
 }
 
 func (sshStrategy *SSHStrategy) Init(beelzebubServiceConfiguration parser.BeelzebubServiceConfiguration, tr tracer.Tracer) error {
-	file, err := os.OpenFile("/configurations/logs/beelzebub.json", os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0666)
+	file, err := os.OpenFile("/configurations/logs/beelzebub.json", os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0770)
 	if err != nil {
 		log.Fatalf("Failed to open log file: %v", err)
 	}
@@ -37,6 +42,12 @@ func (sshStrategy *SSHStrategy) Init(beelzebubServiceConfiguration parser.Beelze
 	log.SetLevel(log.InfoLevel)
 
 	go func() {
+		// Load or generate SSH host key
+		hostKey, err := loadOrGenerateHostKey("/configurations/key/ssh_host_key")
+		if err != nil {
+			log.Fatalf("Failed to load or generate host key: %v", err)
+		}
+
 		server := &ssh.Server{
 			Addr:        beelzebubServiceConfiguration.Address,
 			MaxTimeout:  time.Duration(beelzebubServiceConfiguration.DeadlineTimeoutSeconds) * time.Second,
@@ -166,8 +177,10 @@ func (sshStrategy *SSHStrategy) Init(beelzebubServiceConfiguration parser.Beelze
 				}
 				return matched
 			},
+			HostSigners: []ssh.Signer{hostKey},
 		}
-		err := server.ListenAndServe()
+
+		err = server.ListenAndServe()
 		if err != nil {
 			log.Errorf("Error during init SSH Protocol: %s", err.Error())
 		}
@@ -178,6 +191,41 @@ func (sshStrategy *SSHStrategy) Init(beelzebubServiceConfiguration parser.Beelze
 		"commands": len(beelzebubServiceConfiguration.Commands),
 	}).Infof("GetInstance service %s", beelzebubServiceConfiguration.Protocol)
 	return nil
+}
+
+func loadOrGenerateHostKey(path string) (ssh.Signer, error) {
+	// Try to read an existing private key file
+	privateBytes, err := os.ReadFile(path)
+	if err != nil {
+		if os.IsNotExist(err) {
+			// Generate a new private key
+			privateKey, err := rsa.GenerateKey(rand.Reader, 2048)
+			if err != nil {
+				return nil, fmt.Errorf("failed to generate private key: %v", err)
+			}
+
+			privateBytes = pem.EncodeToMemory(&pem.Block{
+				Type:  "RSA PRIVATE KEY",
+				Bytes: x509.MarshalPKCS1PrivateKey(privateKey),
+			})
+
+			// Save the newly generated key to a file
+			err = os.WriteFile(path, privateBytes, 0770)
+			if err != nil {
+				return nil, fmt.Errorf("failed to save private key: %v", err)
+			}
+		} else {
+			return nil, fmt.Errorf("failed to read private key file: %v", err)
+		}
+	}
+
+	// Parse the private key
+	private, err := gossh.ParsePrivateKey(privateBytes)
+	if err != nil {
+		return nil, fmt.Errorf("failed to parse private key: %v", err)
+	}
+
+	return private, nil
 }
 
 func buildPrompt(user string, serverName string) string {
