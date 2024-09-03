@@ -40,7 +40,6 @@ func (sshStrategy *SSHStrategy) Init(beelzebubServiceConfiguration parser.Beelze
 		},
 	})
 	log.SetLevel(log.InfoLevel)
-
 	go func() {
 		// Load or generate SSH host key
 		hostKey, err := loadOrGenerateHostKey("./configurations/key/ssh_host_key")
@@ -58,6 +57,7 @@ func (sshStrategy *SSHStrategy) Init(beelzebubServiceConfiguration parser.Beelze
 				uuidSession := uuid.New()
 
 				src_ip, src_port, _ := net.SplitHostPort(sess.RemoteAddr().String())
+				_, dest_port, _ := net.SplitHostPort(beelzebubServiceConfiguration.Address)
 				clientVersion := sess.Context().ClientVersion()
 
 				log.WithFields(log.Fields{
@@ -65,6 +65,7 @@ func (sshStrategy *SSHStrategy) Init(beelzebubServiceConfiguration parser.Beelze
 					"protocol":       tracer.SSH.String(),
 					"src_ip":         src_ip,
 					"src_port":       src_port,
+					"dest_port":      dest_port,
 					"status":         tracer.Start.String(),
 					"session":        uuidSession.String(),
 					"environ":        strings.Join(sess.Environ(), ","),
@@ -133,6 +134,7 @@ func (sshStrategy *SSHStrategy) Init(beelzebubServiceConfiguration parser.Beelze
 								"message":        "New SSH Terminal Session",
 								"src_ip":         src_ip,
 								"src_port":       src_port,
+								"dest_port":      dest_port,
 								"status":         tracer.Interaction.String(),
 								"input":          commandInput,
 								"input_duration": fmt.Sprintf("%.2fs", commandDuration), // Log seconds
@@ -149,26 +151,32 @@ func (sshStrategy *SSHStrategy) Init(beelzebubServiceConfiguration parser.Beelze
 				sessionDuration := time.Since(sessionStart).Seconds()
 				log.WithFields(log.Fields{
 					"message":          "End SSH Session",
+					"src_ip":           src_ip,
+					"src_port":         src_port,
+					"dest_port":        dest_port,
 					"status":           tracer.End.String(),
+					"protocol":         tracer.SSH.String(),
 					"session":          uuidSession.String(),
 					"session_duration": fmt.Sprintf("%.2fs", sessionDuration), // Log seconds
 				}).Info("End SSH Session")
 			},
 			PasswordHandler: func(ctx ssh.Context, password string) bool {
 				src_ip, src_port, _ := net.SplitHostPort(ctx.RemoteAddr().String())
+				_, dest_port, _ := net.SplitHostPort(beelzebubServiceConfiguration.Address)
 				clientVersion := ctx.ClientVersion()
 
 				log.WithFields(log.Fields{
-					"message":  "New SSH attempt",
-					"protocol": tracer.SSH.String(),
-					"status":   tracer.Stateless.String(),
-					"username": ctx.User(),
-					"password": password,
-					"client":   clientVersion,
-					"src_ip":   src_ip,
-					"src_port": src_port,
-					"session":  uuid.New().String(),
-					"service":  beelzebubServiceConfiguration.Description,
+					"message":   "New SSH attempt",
+					"protocol":  tracer.SSH.String(),
+					"status":    tracer.Stateless.String(),
+					"username":  ctx.User(),
+					"password":  password,
+					"client":    clientVersion,
+					"src_ip":    src_ip,
+					"src_port":  src_port,
+					"dest_port": dest_port,
+					"session":   uuid.New().String(),
+					"service":   beelzebubServiceConfiguration.Description,
 				}).Info("New SSH attempt")
 				matched, err := regexp.MatchString(beelzebubServiceConfiguration.PasswordRegex, password)
 				if err != nil {

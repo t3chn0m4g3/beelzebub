@@ -53,16 +53,18 @@ func (tcpStrategy *TCPStrategy) Init(beelzebubServiceConfiguration parser.Beelze
 					}
 
 					src_ip, src_port, _ := net.SplitHostPort(conn.RemoteAddr().String())
+					_, dest_port, _ := net.SplitHostPort(beelzebubServiceConfiguration.Address)
 
 					log.WithFields(log.Fields{
-						"message":  "New TCP attempt",
-						"protocol": tracer.TCP.String(),
-						"command":  command,
-						"status":   tracer.Stateless.String(),
-						"src_ip":   src_ip,
-						"src_port": src_port,
-						"session":  uuid.New().String(),
-						"service":  beelzebubServiceConfiguration.Description,
+						"message":   "New TCP attempt",
+						"protocol":  tracer.TCP.String(),
+						"command":   command,
+						"status":    tracer.Stateless.String(),
+						"src_ip":    src_ip,
+						"src_port":  src_port,
+						"dest_port": dest_port,
+						"session":   uuid.New().String(),
+						"service":   beelzebubServiceConfiguration.Description,
 					}).Info("New TCP attempt")
 					conn.Close()
 				}()

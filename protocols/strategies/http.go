@@ -40,7 +40,7 @@ func (httpStrategy HTTPStrategy) Init(beelzebubServiceConfiguration parser.Beelz
 	serverMux := http.NewServeMux()
 
 	serverMux.HandleFunc("/", func(responseWriter http.ResponseWriter, request *http.Request) {
-		traceRequest(request, tr, beelzebubServiceConfiguration.Description)
+		traceRequest(request, tr, beelzebubServiceConfiguration.Description, beelzebubServiceConfiguration.Address)
 		for _, command := range httpStrategy.beelzebubServiceConfiguration.Commands {
 			matched, err := regexp.MatchString(command.Regex, request.RequestURI)
 			if err != nil {
@@ -103,7 +103,7 @@ func (httpStrategy HTTPStrategy) Init(beelzebubServiceConfiguration parser.Beelz
 	return nil
 }
 
-func traceRequest(request *http.Request, tr tracer.Tracer, HoneypotDescription string) {
+func traceRequest(request *http.Request, tr tracer.Tracer, HoneypotDescription string, HoneypotAddress string) {
 	file, err := os.OpenFile("./configurations/log/beelzebub.json", os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0666)
 	if err != nil {
 		log.Fatalf("Failed to open log file: %v", err)
@@ -126,6 +126,7 @@ func traceRequest(request *http.Request, tr tracer.Tracer, HoneypotDescription s
 
 	}
 	src_ip, src_port, _ := net.SplitHostPort(request.RemoteAddr)
+	_, dest_port, _ := net.SplitHostPort(HoneypotAddress)
 
 	log.WithFields(log.Fields{
 		"message":         "HTTP New request",
@@ -140,6 +141,7 @@ func traceRequest(request *http.Request, tr tracer.Tracer, HoneypotDescription s
 		"status":          tracer.Stateless.String(),
 		"src_ip":          src_ip,
 		"src_port":        src_port,
+		"dest_port":       dest_port,
 		"session":         uuid.New().String(),
 		"service":         HoneypotDescription,
 	}).Info("HTTP New request")
