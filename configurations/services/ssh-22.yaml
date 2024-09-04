@@ -5,7 +5,7 @@ description: "SSH interactive LLM"
 commands:
   - regex: "^(.+)$"
     plugin: "LLMHoneypot"
-serverVersion: "SSH-2.0-OpenSSH_7.9p1"
+serverVersion: "OpenSSH_7.9p1"
 serverName: "ubuntu"
 passwordRegex: "^(root|qwerty|Smoker666|123456|jenkins|minecraft|sinus|alex|postgres|Ly123456)$"
 deadlineTimeoutSeconds: 6000
