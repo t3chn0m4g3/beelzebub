@@ -60,6 +60,77 @@ func (sshStrategy *SSHStrategy) Init(beelzebubServiceConfiguration parser.Beelze
 				_, dest_port, _ := net.SplitHostPort(beelzebubServiceConfiguration.Address)
 				clientVersion := sess.Context().ClientVersion()
 
+				// SSH Inline Sessions
+
+				if sess.RawCommand() != "" {
+					for _, command := range beelzebubServiceConfiguration.Commands {
+						matched, err := regexp.MatchString(command.Regex, sess.RawCommand())
+						if err != nil {
+							log.Errorf("Error regex: %s, %s", command.Regex, err.Error())
+							continue
+						}
+
+						if matched {
+							commandOutput := command.Handler
+
+							if command.Plugin == plugins.LLMPluginName {
+
+								llmModel, err := plugins.FromStringToLLMModel(beelzebubServiceConfiguration.Plugin.LLMModel)
+
+								if err != nil {
+									log.Errorf("Error fromString: %s", err.Error())
+									commandOutput = "command not found"
+								}
+
+								llmHoneypot := plugins.LLMHoneypot{
+									Histories:   make([]plugins.Message, 0),
+									OpenAIKey:   beelzebubServiceConfiguration.Plugin.OpenAISecretKey,
+									Protocol:    tracer.SSH,
+									Host:        beelzebubServiceConfiguration.Plugin.Host,
+									Model:       llmModel,
+									OllamaModel: beelzebubServiceConfiguration.Plugin.OllamaModel,
+								}
+
+								llmHoneypotInstance := plugins.InitLLMHoneypot(llmHoneypot)
+
+								if commandOutput, err = llmHoneypotInstance.ExecuteModel(sess.RawCommand()); err != nil {
+									log.Errorf("Error ExecuteModel: %s, %s", sess.RawCommand(), err.Error())
+									commandOutput = "command not found"
+								}
+							}
+
+							sess.Write(append([]byte(commandOutput), '\n'))
+							sessionDuration := time.Since(sessionStart).Seconds()
+							log.WithFields(log.Fields{
+								"message":  "New SSH Inline Session",
+								"protocol": tracer.SSH.String(),
+								"src_ip":   src_ip,
+								"src_port": src_port,
+								"status":   tracer.Start.String(),
+								"session":  uuidSession.String(),
+								"environ":  strings.Join(sess.Environ(), ","),
+								"username": sess.User(),
+								"service":  beelzebubServiceConfiguration.Description,
+								"input":    sess.RawCommand(),
+								"output":   commandOutput,
+							}).Info("New SSH Inline Session")
+							log.WithFields(log.Fields{
+								"message":          "End SSH Inline Session",
+								"src_ip":           src_ip,
+								"src_port":         src_port,
+								"dest_port":        dest_port,
+								"status":           tracer.End.String(),
+								"protocol":         tracer.SSH.String(),
+								"session":          uuidSession.String(),
+								"session_duration": fmt.Sprintf("%.2fs", sessionDuration), // Log seconds
+							}).Info("End SSH Inline Session")
+							return
+						}
+					}
+				}
+
+				// SSH Inline Sessions
+
 				log.WithFields(log.Fields{
 					"message":        "New SSH Session",
 					"protocol":       tracer.SSH.String(),
