@@ -22,7 +22,7 @@ commands:
     plugin: "LLMHoneypot"
     statusCode: 200
 plugin:
-  llmModel: ${LLMMODEL}
-  host: ${LLMHOST}
-  ollamaModel: ${OLLAMAMODEL}
-  #openAISecretKey: ${OPENAISECRETKEY}
+  llmModel: ${BEELZEBUB_LLM_MODEL}
+  host: ${BEELZEBUB_LLM_HOST}
+  ollamaModel: ${BEELZEBUB_OLLAMA_MODEL}
+  #openAISecretKey: ${BEELZEBUB_OPENAISECRETKEY}
