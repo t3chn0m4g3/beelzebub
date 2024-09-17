@@ -10,7 +10,7 @@ serverName: "ubuntu"
 passwordRegex: "^(root|qwerty|Smoker666|123456|jenkins|minecraft|sinus|alex|postgres|Ly123456)$"
 deadlineTimeoutSeconds: 6000
 plugin:
-  llmModel: ${BEELZEBUB_LLM_MODEL}
-  host: ${BEELZEBUB_LLM_HOST}
-  ollamaModel: ${BEELZEBUB_OLLAMA_MODEL}
-  #openAISecretKey: ${BEELZEBUB_OPENAISECRETKEY}
+  llmModel: ${LLM_MODEL}
+  host: ${LLM_HOST}
+  ollamaModel: ${OLLAMA_MODEL}
+  #openAISecretKey: ${OPENAISECRETKEY}
