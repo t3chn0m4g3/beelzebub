@@ -3,3 +3,5 @@
 logs
 .vscode
 .history
+configurations/key/
+configurations/log/
