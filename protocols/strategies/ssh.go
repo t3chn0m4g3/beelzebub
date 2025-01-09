@@ -34,7 +34,7 @@ func (sshStrategy *SSHStrategy) Init(beelzebubServiceConfiguration parser.Beelze
 	multiWriter := io.MultiWriter(os.Stdout, file)
 	log.SetOutput(multiWriter)
 	log.SetFormatter(&log.JSONFormatter{
-		TimestampFormat: time.RFC3339,
+		TimestampFormat: time.RFC3339Nano,
 		FieldMap: log.FieldMap{
 			log.FieldKeyTime: "timestamp",
 		},
@@ -106,6 +106,7 @@ func (sshStrategy *SSHStrategy) Init(beelzebubServiceConfiguration parser.Beelze
 								"protocol": tracer.SSH.String(),
 								"src_ip":   src_ip,
 								"src_port": src_port,
+								"dest_port": dest_port,
 								"status":   tracer.Start.String(),
 								"session":  uuidSession.String(),
 								"environ":  strings.Join(sess.Environ(), ","),
