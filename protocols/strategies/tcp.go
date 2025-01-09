@@ -25,7 +25,7 @@ func (tcpStrategy *TCPStrategy) Init(beelzebubServiceConfiguration parser.Beelze
 	multiWriter := io.MultiWriter(os.Stdout, file)
 	log.SetOutput(multiWriter)
 	log.SetFormatter(&log.JSONFormatter{
-		TimestampFormat: time.RFC3339,
+		TimestampFormat: time.RFC3339Nano,
 		FieldMap: log.FieldMap{
 			log.FieldKeyTime: "timestamp",
 		},
