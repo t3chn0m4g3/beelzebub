@@ -53,20 +53,21 @@ func (httpStrategy HTTPStrategy) Init(beelzebubServiceConfiguration parser.Beelz
 
 				if command.Plugin == plugins.LLMPluginName {
 
-					llmModel, err := plugins.FromStringToLLMModel(beelzebubServiceConfiguration.Plugin.LLMModel)
+					llmProvider, err := plugins.FromStringToLLMProvider(beelzebubServiceConfiguration.Plugin.LLMProvider)
 
 					if err != nil {
-						log.Errorf("Error fromString: %s", err.Error())
+						log.Errorf("Error: %s", err.Error())
 						responseHTTPBody = "404 Not Found!"
 					}
 
 					llmHoneypot := plugins.LLMHoneypot{
-						Histories:   make([]plugins.Message, 0),
-						OpenAIKey:   beelzebubServiceConfiguration.Plugin.OpenAISecretKey,
-						Protocol:    tracer.HTTP,
-						Host:        beelzebubServiceConfiguration.Plugin.Host,
-						Model:       llmModel,
-						OllamaModel: beelzebubServiceConfiguration.Plugin.OllamaModel,
+						Histories:    make([]plugins.Message, 0),
+						OpenAIKey:    beelzebubServiceConfiguration.Plugin.OpenAISecretKey,
+						Protocol:     tracer.HTTP,
+						Host:         beelzebubServiceConfiguration.Plugin.Host,
+						Model:        beelzebubServiceConfiguration.Plugin.LLMModel,
+						Provider:     llmProvider,
+						CustomPrompt: beelzebubServiceConfiguration.Plugin.Prompt,
 					}
 
 					llmHoneypotInstance := plugins.InitLLMHoneypot(llmHoneypot)
@@ -83,13 +84,25 @@ func (httpStrategy HTTPStrategy) Init(beelzebubServiceConfiguration parser.Beelz
 				}
 
 				setResponseHeaders(responseWriter, command.Headers, command.StatusCode)
-				fmt.Fprintf(responseWriter, responseHTTPBody)
+				fmt.Fprint(responseWriter, responseHTTPBody)
 				break
 			}
 		}
 	})
 	go func() {
-		err := http.ListenAndServe(httpStrategy.beelzebubServiceConfiguration.Address, serverMux)
+		var err error
+		// Launch a TLS supporting server if we are supplied a TLS Key and Certificate.
+		// If relative paths are supplied, they are relative to the CWD of the binary.
+		// The can be self-signed, only the client will validate this (or not).
+		if httpStrategy.beelzebubServiceConfiguration.TLSKeyPath != "" && httpStrategy.beelzebubServiceConfiguration.TLSCertPath != "" {
+			err = http.ListenAndServeTLS(
+				httpStrategy.beelzebubServiceConfiguration.Address,
+				httpStrategy.beelzebubServiceConfiguration.TLSCertPath,
+				httpStrategy.beelzebubServiceConfiguration.TLSKeyPath,
+				serverMux)
+		} else {
+			err = http.ListenAndServe(httpStrategy.beelzebubServiceConfiguration.Address, serverMux)
+		}
 		if err != nil {
 			log.Errorf("Error during init HTTP Protocol: %s", err.Error())
 			return
@@ -104,6 +117,7 @@ func (httpStrategy HTTPStrategy) Init(beelzebubServiceConfiguration parser.Beelz
 }
 
 func traceRequest(request *http.Request, tr tracer.Tracer, HoneypotDescription string, HoneypotAddress string) {
+	var TLSServerName, message string
 	file, err := os.OpenFile("./configurations/log/beelzebub.json", os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0666)
 	if err != nil {
 		log.Fatalf("Failed to open log file: %v", err)
@@ -128,8 +142,14 @@ func traceRequest(request *http.Request, tr tracer.Tracer, HoneypotDescription s
 	src_ip, src_port, _ := net.SplitHostPort(request.RemoteAddr)
 	_, dest_port, _ := net.SplitHostPort(HoneypotAddress)
 
-	log.WithFields(log.Fields{
-		"message":         "HTTP New request",
+	message = "HTTP New request"
+	if request.TLS != nil {
+		message = "HTTPS New Request"
+		TLSServerName = request.TLS.ServerName
+	}
+
+	fields := log.Fields{
+		"message":         message,
 		"request_uri":     request.RequestURI,
 		"protocol":        tracer.HTTP.String(),
 		"request_method":  request.Method,
@@ -144,7 +164,14 @@ func traceRequest(request *http.Request, tr tracer.Tracer, HoneypotDescription s
 		"dest_port":       dest_port,
 		"session":         uuid.New().String(),
 		"service":         HoneypotDescription,
-	}).Info("HTTP New request")
+	}
+
+	// Only add "tls_server_name" if it's non-empty
+	if TLSServerName != "" {
+		fields["tls_server_name"] = TLSServerName
+	}
+
+	log.WithFields(fields).Info(message)
 }
 
 func mapHeaderToString(headers http.Header) string {

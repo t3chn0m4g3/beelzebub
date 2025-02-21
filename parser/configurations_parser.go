@@ -52,7 +52,8 @@ type Plugin struct {
 	OpenAISecretKey string `yaml:"openAISecretKey"`
 	Host            string `yaml:"host"`
 	LLMModel        string `yaml:"llmModel"`
-	OllamaModel     string `yaml:"ollamaModel"`
+	LLMProvider     string `yaml:"llmProvider"`
+	Prompt          string `yaml:"prompt"`
 }
 
 // UnmarshalYAML customizes the unmarshalling of the Plugin struct
@@ -64,8 +65,8 @@ func (p *Plugin) UnmarshalYAML(unmarshal func(interface{}) error) error {
 	}
 	raw.OpenAISecretKey = expandEnv(raw.OpenAISecretKey)
 	raw.LLMModel = expandEnv(raw.LLMModel)
+	raw.LLMProvider = expandEnv(raw.LLMProvider)
 	raw.Host = expandEnv(raw.Host)
-	raw.OllamaModel = expandEnv(raw.OllamaModel)
 	// fmt.Println("OllamaModel: ", raw.OllamaModel)
 	*p = Plugin(raw)
 	return nil
@@ -89,6 +90,8 @@ type BeelzebubServiceConfiguration struct {
 	Description            string    `yaml:"description"`
 	Banner                 string    `yaml:"banner"`
 	Plugin                 Plugin    `yaml:"plugin"`
+	TLSCertPath            string    `yaml:"tlsCertPath"`
+	TLSKeyPath             string    `yaml:"tlsKeyPath"`
 }
 
 // Command is the struct that contains the configurations of the commands

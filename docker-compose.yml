@@ -1,22 +1,21 @@
 services:
   beelzebub:
     build: .
-    #network_mode: host # Not work on Mac OS
     container_name: beelzebub
     restart: always
-    ports: # Remove me, if you use configuration network_mode: host
+    ports:
       - "22:22"
       - "2222:2222"
       - "8080:8080"
       - "8081:8081"
       - "80:80"
       - "3306:3306"
-      - "2112:2112" # Prometheus openmetrics
+      - "2112:2112" #Prometheus Open Metrics
     environment:
       RABBITMQ_URI: ${RABBITMQ_URI}
-      LLM_MODEL: "ollama"
+      LLM_PROVIDER: "ollama"
       LLM_HOST: "http://localhost:11434/api/chat"
-      OLLAMA_MODEL: "llama3.1"
+      LLM_MODEL: "llama3.1"
       #LLM_MODEL: "gpt4-o"
       #OPENAISECRETKEY: "sk-proj-123456"
 #    volumes:

@@ -75,20 +75,22 @@ func (sshStrategy *SSHStrategy) Init(beelzebubServiceConfiguration parser.Beelze
 
 							if command.Plugin == plugins.LLMPluginName {
 
-								llmModel, err := plugins.FromStringToLLMModel(beelzebubServiceConfiguration.Plugin.LLMModel)
+								llmProvider, err := plugins.FromStringToLLMProvider(beelzebubServiceConfiguration.Plugin.LLMProvider)
 
 								if err != nil {
-									log.Errorf("Error fromString: %s", err.Error())
+									log.Errorf("Error: %s", err.Error())
 									commandOutput = "command not found"
+									llmProvider = plugins.OpenAI
 								}
 
 								llmHoneypot := plugins.LLMHoneypot{
-									Histories:   make([]plugins.Message, 0),
-									OpenAIKey:   beelzebubServiceConfiguration.Plugin.OpenAISecretKey,
-									Protocol:    tracer.SSH,
-									Host:        beelzebubServiceConfiguration.Plugin.Host,
-									Model:       llmModel,
-									OllamaModel: beelzebubServiceConfiguration.Plugin.OllamaModel,
+									Histories:    make([]plugins.Message, 0),
+									OpenAIKey:    beelzebubServiceConfiguration.Plugin.OpenAISecretKey,
+									Protocol:     tracer.SSH,
+									Host:         beelzebubServiceConfiguration.Plugin.Host,
+									Model:        beelzebubServiceConfiguration.Plugin.LLMModel,
+									Provider:     llmProvider,
+									CustomPrompt: beelzebubServiceConfiguration.Plugin.Prompt,
 								}
 
 								llmHoneypotInstance := plugins.InitLLMHoneypot(llmHoneypot)
@@ -102,18 +104,18 @@ func (sshStrategy *SSHStrategy) Init(beelzebubServiceConfiguration parser.Beelze
 							sess.Write(append([]byte(commandOutput), '\n'))
 							sessionDuration := time.Since(sessionStart).Seconds()
 							log.WithFields(log.Fields{
-								"message":  "New SSH Inline Session",
-								"protocol": tracer.SSH.String(),
-								"src_ip":   src_ip,
-								"src_port": src_port,
+								"message":   "New SSH Inline Session",
+								"protocol":  tracer.SSH.String(),
+								"src_ip":    src_ip,
+								"src_port":  src_port,
 								"dest_port": dest_port,
-								"status":   tracer.Start.String(),
-								"session":  uuidSession.String(),
-								"environ":  strings.Join(sess.Environ(), ","),
-								"username": sess.User(),
-								"service":  beelzebubServiceConfiguration.Description,
-								"input":    sess.RawCommand(),
-								"output":   commandOutput,
+								"status":    tracer.Start.String(),
+								"session":   uuidSession.String(),
+								"environ":   strings.Join(sess.Environ(), ","),
+								"username":  sess.User(),
+								"service":   beelzebubServiceConfiguration.Description,
+								"input":     sess.RawCommand(),
+								"output":    commandOutput,
 							}).Info("New SSH Inline Session")
 							log.WithFields(log.Fields{
 								"message":          "End SSH Inline Session",
@@ -173,20 +175,21 @@ func (sshStrategy *SSHStrategy) Init(beelzebubServiceConfiguration parser.Beelze
 
 							if command.Plugin == plugins.LLMPluginName {
 
-								llmModel, err := plugins.FromStringToLLMModel(beelzebubServiceConfiguration.Plugin.LLMModel)
+								llmProvider, err := plugins.FromStringToLLMProvider(beelzebubServiceConfiguration.Plugin.LLMProvider)
 
 								if err != nil {
-									log.Errorf("Error fromString: %s", err.Error())
-									commandOutput = "command not found"
+									log.Errorf("Error: %s, fallback OpenAI", err.Error())
+									llmProvider = plugins.OpenAI
 								}
 
 								llmHoneypot := plugins.LLMHoneypot{
-									Histories:   histories,
-									OpenAIKey:   beelzebubServiceConfiguration.Plugin.OpenAISecretKey,
-									Protocol:    tracer.SSH,
-									Host:        beelzebubServiceConfiguration.Plugin.Host,
-									Model:       llmModel,
-									OllamaModel: beelzebubServiceConfiguration.Plugin.OllamaModel,
+									Histories:    histories,
+									OpenAIKey:    beelzebubServiceConfiguration.Plugin.OpenAISecretKey,
+									Protocol:     tracer.SSH,
+									Host:         beelzebubServiceConfiguration.Plugin.Host,
+									Model:        beelzebubServiceConfiguration.Plugin.LLMModel,
+									Provider:     llmProvider,
+									CustomPrompt: beelzebubServiceConfiguration.Plugin.Prompt,
 								}
 
 								llmHoneypotInstance := plugins.InitLLMHoneypot(llmHoneypot)
